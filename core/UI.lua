@@ -131,7 +131,7 @@ local function BuildFrame()
 
         local row = CreateFrame("Frame", nil, f)
         row:SetSize(FRAME_W - 2, ROW_H)
-        row:SetPoint("TOPLEFT", f, "TOPLEFT", 1, -(TITLE_H + PAD + (i - 1) * ROW_H))
+        row:SetPoint("TOPLEFT", f, "TOPLEFT", 1, -(TITLE_H + PAD/2 + (i - 1) * ROW_H))
 
         -- Separator above every row except the first
         if i > 1 then
