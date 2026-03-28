@@ -1,0 +1,10 @@
+{
+    "Lua.diagnostics.globals": [
+        "CinematicFrame_CancelCinematic",
+        "LFDRoleCheckPopup",
+        "LFDRoleCheckPopupAcceptButton",
+        "StaticPopupDialogs",
+        "StaticPopup_Hide",
+        "AuctionHouseFrame"
+    ]
+}

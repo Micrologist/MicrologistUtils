@@ -1,4 +1,6 @@
 ## Interface: 120000
 ## Title: MicrologistUtils
+## SavedVariables: MicrologistUtilsDB
 
 MicrologistUtils.lua
+modules\AutoRoleCheck.lua
