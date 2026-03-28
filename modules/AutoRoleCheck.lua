@@ -1,7 +1,10 @@
 local MU = MicrologistUtils
 
 local module = {}
-MU:RegisterModule("AutoRoleCheck", module)
+MU:RegisterModule("AutoRoleCheck", module, {
+    displayName = "Auto Role Check",
+    description = "Automatically accepts role checks when queuing.",
+})
 
 function module:Init()
     local frame = CreateFrame("Frame")

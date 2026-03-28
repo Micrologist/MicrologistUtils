@@ -5,6 +5,8 @@
         "LFDRoleCheckPopupAcceptButton",
         "StaticPopupDialogs",
         "StaticPopup_Hide",
-        "AuctionHouseFrame"
+        "AuctionHouseFrame",
+        "SlashCmdList",
+        "UISpecialFrames"
     ]
 }
