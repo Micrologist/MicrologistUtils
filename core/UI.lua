@@ -2,24 +2,26 @@ local MU = MicrologistUtils
 
 -- ── Physical pixel counts (integers, UI-scale-independent) ───────────────────
 local PX = {
-    FRAME_W     = 280,
-    TITLE_H     = 24,
-    ROW_H       = 56,
-    PAD         = 10,
-    TOGGLE_W    = 34,
-    TOGGLE_H    = 14,
-    KNOB_OFF    = 3,   -- knob inset from toggle edge
-    FONT_NORMAL = 12,
-    FONT_SMALL  = 10,
-    FONT_CLOSE  = 14,
+    FRAME_W     = 240,
+    TITLE_H     = 22,
+    ROW_H       = 40,
+    PAD         = 8,
+    TOGGLE_W    = 26,
+    TOGGLE_H    = 12,
+    KNOB_OFF    = 2,
+    FONT_NORMAL = 11,
+    FONT_SMALL  = 9,
+    FONT_CLOSE  = 12,
+    SLIDER_W    = 24,
 }
 PX.KNOB   = PX.TOGGLE_H - 4
 PX.TEXT_W = PX.FRAME_W - 2 - PX.PAD - PX.TOGGLE_W - PX.PAD - 8
 
 -- ── Virtual-unit equivalents (set by InitSizes before any frame is built) ─────
-local pixel                                -- 1 physical px in virtual units
+local pixel
 local FRAME_W, TITLE_H, ROW_H, PAD
 local TOGGLE_W, TOGGLE_H, KNOB_SIZE, KNOB_OFF, TEXT_W
+local SLIDER_W
 local FONT_NORMAL_SZ, FONT_SMALL_SZ, FONT_CLOSE_SZ
 local FONT_FACE, FONT_FLAGS
 
@@ -42,14 +44,11 @@ local function InitSizes()
     KNOB_SIZE      = PX.KNOB     * pixel
     KNOB_OFF       = PX.KNOB_OFF * pixel
     TEXT_W         = PX.TEXT_W   * pixel
-    -- Font sizes: desired physical px * pixel converts to virtual units that
-    -- render at exactly that many screen pixels regardless of UI scale
+    SLIDER_W       = PX.SLIDER_W * pixel
     FONT_NORMAL_SZ = PX.FONT_NORMAL * pixel
     FONT_SMALL_SZ  = PX.FONT_SMALL  * pixel
     FONT_CLOSE_SZ  = PX.FONT_CLOSE  * pixel
-    -- Borrow the font face and flags from Blizzard; only override the size
     FONT_FACE, _, FONT_FLAGS = GameFontNormal:GetFont()
-    -- 1px border and insets
     BD.edgeSize      = pixel
     BD.insets.left   = pixel
     BD.insets.right  = pixel
@@ -70,9 +69,11 @@ local C = {
     toggleOnBorder  = { 0.28, 0.72, 0.28, 1    },
     toggleOff       = { 0.14, 0.14, 0.14, 1    },
     toggleOffBorder = { 0.26, 0.26, 0.26, 1    },
-    knob            = { 0.88, 0.88, 0.88, 1    },
+    knob            = { 0.66, 0.66, 0.66, 1    },
     closeNorm       = { 0.60, 0.60, 0.60, 1    },
     closeHover      = { 1.00, 0.28, 0.28, 1    },
+    sliderTrack     = { 0.18, 0.18, 0.18, 1    },
+    sliderBorder    = { 0.26, 0.26, 0.26, 1    },
 }
 
 local function ApplyBD(f, bg, border)
@@ -120,7 +121,7 @@ local function BuildFrame()
     InitSizes()
 
     local n      = #MU.moduleOrder
-    local totalH = TITLE_H + PAD / 2 + n * ROW_H + PAD
+    local totalH = TITLE_H + n * ROW_H + PAD
 
     local f = CreateFrame("Frame", "MicrologistUtilsFrame", UIParent, "BackdropTemplate")
     f:SetSize(FRAME_W, totalH)
@@ -132,29 +133,22 @@ local function BuildFrame()
     f:SetScript("OnDragStart", f.StartMoving)
     f:SetScript("OnDragStop",  f.StopMovingOrSizing)
     ApplyBD(f, C.bg, C.border)
+
+    local savedScale = (MU.db and MU.db.UIScale) or 1
+    f:SetScale(savedScale)
+
     f:Hide()
 
     tinsert(UISpecialFrames, "MicrologistUtilsFrame")
 
     -- ── Title bar ────────────────────────────────────────────────────────────
     local titleBar = CreateFrame("Frame", nil, f, "BackdropTemplate")
-    titleBar:SetPoint("TOPLEFT",  f, "TOPLEFT",   pixel, -pixel)
-    titleBar:SetPoint("TOPRIGHT", f, "TOPRIGHT",  -pixel, -pixel)
+    titleBar:SetPoint("TOPLEFT",  f, "TOPLEFT",  pixel, -pixel)
+    titleBar:SetPoint("TOPRIGHT", f, "TOPRIGHT", -pixel, -pixel)
     titleBar:SetHeight(TITLE_H - 2 * pixel)
     ApplyBD(titleBar, C.titleBg, C.titleBorder)
 
-    local titleText = titleBar:CreateFontString(nil, "OVERLAY")
-    titleText:SetFont(FONT_FACE, FONT_NORMAL_SZ, FONT_FLAGS)
-    titleText:SetPoint("LEFT", titleBar, "LEFT", PAD, 0)
-    titleText:SetText("MicrologistUtils")
-    titleText:SetTextColor(unpack(C.textPrim))
-
-    local versionText = titleBar:CreateFontString(nil, "OVERLAY")
-    versionText:SetFont(FONT_FACE, FONT_SMALL_SZ, FONT_FLAGS)
-    versionText:SetPoint("LEFT", titleText, "RIGHT", 6 * pixel, 0)
-    versionText:SetText("v" .. (MU.version or "?"))
-    versionText:SetTextColor(0.45, 0.45, 0.45, 1)
-
+    -- Close button (anchored first so slider can reference it)
     local closeBtn = CreateFrame("Button", nil, titleBar)
     closeBtn:SetSize(TITLE_H - 2 * pixel, TITLE_H - 2 * pixel)
     closeBtn:SetPoint("RIGHT", titleBar, "RIGHT", 0, 0)
@@ -167,9 +161,72 @@ local function BuildFrame()
     closeBtn:SetScript("OnEnter", function() closeLabel:SetTextColor(unpack(C.closeHover)) end)
     closeBtn:SetScript("OnLeave", function() closeLabel:SetTextColor(unpack(C.closeNorm)) end)
 
+    -- Scale slider
+    local sliderFrame = CreateFrame("Slider", "MicrologistUtilsScaleSlider", titleBar)
+    sliderFrame:SetOrientation("HORIZONTAL")
+    sliderFrame:SetSize(SLIDER_W, TITLE_H - 2 * pixel)   -- full bar height = easy to grab
+    sliderFrame:SetPoint("RIGHT", closeBtn, "LEFT", 0, 0)
+    sliderFrame:SetMinMaxValues(0.5, 2.0)
+    sliderFrame:SetValueStep(0.05)
+    if sliderFrame.SetObeyStepOnDrag then
+        sliderFrame:SetObeyStepOnDrag(true)
+    end
+
+    -- Track (thin visual bar behind the thumb)
+    local track = sliderFrame:CreateTexture(nil, "BACKGROUND")
+    track:SetColorTexture(unpack(C.sliderTrack))
+    track:SetHeight(4 * pixel)
+    track:SetPoint("LEFT",  sliderFrame, "LEFT",  0, 0)
+    track:SetPoint("RIGHT", sliderFrame, "RIGHT", 0, 0)
+
+    -- 1px border around the track
+    local trackBorder = sliderFrame:CreateTexture(nil, "BACKGROUND")
+    trackBorder:SetColorTexture(unpack(C.sliderBorder))
+    trackBorder:SetHeight(6 * pixel)
+    trackBorder:SetPoint("LEFT",  sliderFrame, "LEFT",  0, 0)
+    trackBorder:SetPoint("RIGHT", sliderFrame, "RIGHT", 0, 0)
+    trackBorder:SetDrawLayer("BACKGROUND", -1)
+
+    -- Thumb
+    local thumb = sliderFrame:CreateTexture(nil, "OVERLAY")
+    thumb:SetColorTexture(unpack(C.knob))
+    thumb:SetSize(2 * pixel, 8 * pixel)
+    sliderFrame:SetThumbTexture(thumb)
+
+    sliderFrame:SetValue(savedScale)
+
+    local function SliderTooltip(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(math.floor(self:GetValue() * 100 + 0.5) .. "%", 1, 1, 1)
+        GameTooltip:Show()
+    end
+    sliderFrame:SetScript("OnValueChanged", function(self, value)
+        if MU.db then MU.db.UIScale = value end
+        if GameTooltip:GetOwner() == self then SliderTooltip(self) end
+    end)
+    sliderFrame:SetScript("OnMouseUp", function(self)
+        f:SetScale(self:GetValue())
+    end)
+    sliderFrame:SetScript("OnEnter", SliderTooltip)
+    sliderFrame:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    -- Title text
+    local titleText = titleBar:CreateFontString(nil, "OVERLAY")
+    titleText:SetFont(FONT_FACE, FONT_NORMAL_SZ, FONT_FLAGS)
+    titleText:SetPoint("LEFT", titleBar, "LEFT", PAD, 0)
+    titleText:SetText("MicrologistUtils")
+    titleText:SetTextColor(unpack(C.textPrim))
+
+    -- Version text — baseline-aligned with title text
+    local versionText = titleBar:CreateFontString(nil, "OVERLAY")
+    versionText:SetFont(FONT_FACE, FONT_SMALL_SZ, FONT_FLAGS)
+    versionText:SetPoint("BOTTOMLEFT", titleText, "BOTTOMRIGHT", 4 * pixel, 0)
+    versionText:SetText("v" .. (MU.version or "?"))
+    versionText:SetTextColor(0.25, 0.25, 0.25, 1)
+
     -- ── Module rows ───────────────────────────────────────────────────────────
     f.toggles = {}
-    local yOffset = -(TITLE_H + PAD / 2)
+    local yOffset = -TITLE_H
 
     for i, key in ipairs(MU.moduleOrder) do
         local meta = MU.moduleMeta[key] or {}
@@ -187,7 +244,7 @@ local function BuildFrame()
 
         local nameFS = row:CreateFontString(nil, "OVERLAY")
         nameFS:SetFont(FONT_FACE, FONT_NORMAL_SZ, FONT_FLAGS)
-        nameFS:SetPoint("TOPLEFT", row, "TOPLEFT", PAD, -10 * pixel)
+        nameFS:SetPoint("TOPLEFT", row, "TOPLEFT", PAD, -5 * pixel)
         nameFS:SetWidth(TEXT_W)
         nameFS:SetJustifyH("LEFT")
         nameFS:SetText(meta.displayName or key)
@@ -197,7 +254,7 @@ local function BuildFrame()
         if desc ~= "" then
             local descFS = row:CreateFontString(nil, "OVERLAY")
             descFS:SetFont(FONT_FACE, FONT_SMALL_SZ, FONT_FLAGS)
-            descFS:SetPoint("TOPLEFT", nameFS, "BOTTOMLEFT", 0, -3 * pixel)
+            descFS:SetPoint("TOPLEFT", nameFS, "BOTTOMLEFT", 0, -2 * pixel)
             descFS:SetWidth(TEXT_W)
             descFS:SetJustifyH("LEFT")
             descFS:SetText(desc)

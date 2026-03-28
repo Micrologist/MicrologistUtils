@@ -1,13 +1,16 @@
 MicrologistUtils = {}
 local MU = MicrologistUtils
 
-MU.version     = C_AddOns.GetAddOnMetadata("MicrologistUtils", "Version")
+local _v   = C_AddOns.GetAddOnMetadata("MicrologistUtils", "Version")
+MU.version = (_v and _v:sub(1, 1) ~= "@") and _v or "dev"
 MU.modules     = {}
 MU.moduleOrder = {}  -- preserves registration order for the UI
 MU.moduleMeta  = {}  -- displayName, description per module key
 
 MU.defaults = {
-    AutoRoleCheck = true,
+    AutoRoleCheck       = true,
+    AutoExpansionFilter = true,
+    UIScale             = 1,
 }
 
 ---@param key     string  SavedVariable key, must match a MU.defaults entry

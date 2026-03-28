@@ -2,8 +2,8 @@ local MU = MicrologistUtils
 
 local module = {}
 MU:RegisterModule("AutoRoleCheck", module, {
-    displayName = "Auto Accept Role Check",
-    description = "Automatically accept role checks when prompted",
+    displayName = "Auto Accept Role Checks",
+    description = "Automatically accept role checks when prompted (Set Role in DF)",
 })
 
 function module:Init()

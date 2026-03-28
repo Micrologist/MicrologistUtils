@@ -8,6 +8,8 @@
         "AuctionHouseFrame",
         "SlashCmdList",
         "UISpecialFrames",
-        "LFDRoleCheckPopupDeclineButton"
+        "LFDRoleCheckPopupDeclineButton",
+        "ProfessionsCustomerOrdersFrame",
+        "Professions"
     ]
 }

@@ -8,4 +8,5 @@
 
 MicrologistUtils.lua
 modules\AutoRoleCheck.lua
+modules\AutoExpansionFilter.lua
 core\UI.lua
