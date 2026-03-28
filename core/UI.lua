@@ -3,11 +3,13 @@ local MU = MicrologistUtils
 -- ── Layout constants ──────────────────────────────────────────────────────────
 local FRAME_W   = 280
 local TITLE_H   = 24
-local ROW_H     = 48
+local ROW_H     = 56    -- tall enough for a 2-line wrapped description
 local PAD       = 10
 local TOGGLE_W  = 34
 local TOGGLE_H  = 14
 local KNOB_SIZE = TOGGLE_H - 4
+-- max text width: row width minus left pad, toggle, right pad, and a small gap
+local TEXT_W    = FRAME_W - 2 - PAD - TOGGLE_W - PAD - 8
 
 -- ── Color palette (ElvUI-ish dark) ────────────────────────────────────────────
 local C = {
@@ -142,6 +144,8 @@ local function BuildFrame()
         -- Module name
         local nameFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         nameFS:SetPoint("TOPLEFT", row, "TOPLEFT", PAD, -10)
+        nameFS:SetWidth(TEXT_W)
+        nameFS:SetJustifyH("LEFT")
         nameFS:SetText(meta.displayName or key)
         nameFS:SetTextColor(unpack(C.textPrim))
 
@@ -150,6 +154,8 @@ local function BuildFrame()
         if desc ~= "" then
             local descFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
             descFS:SetPoint("TOPLEFT", nameFS, "BOTTOMLEFT", 0, -3)
+            descFS:SetWidth(TEXT_W)
+            descFS:SetJustifyH("LEFT")
             descFS:SetText(desc)
             descFS:SetTextColor(unpack(C.textSec))
         end
