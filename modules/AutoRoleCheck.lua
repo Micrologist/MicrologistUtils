@@ -44,12 +44,11 @@ function module:Init()
             if not (LFDRoleCheckPopup and LFDRoleCheckPopup:IsVisible()) then return end
             local function TryAccept(remaining)
                 if remaining <= 0 then return end
-                print(remaining)
                 if not (LFDRoleCheckPopup and LFDRoleCheckPopup:IsVisible()) then return end
                 DoAccept()
                 C_Timer.After(0.5, function() TryAccept(remaining - 1) end)
             end
-            TryAccept(14)
+            TryAccept(20)
         end)
     end
 
