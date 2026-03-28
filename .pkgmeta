@@ -1,0 +1,8 @@
+package-as: MicrologistUtils
+
+ignore:
+  - .github
+  - .gitignore
+  - .pkgmeta
+  - .release
+  - .vscode

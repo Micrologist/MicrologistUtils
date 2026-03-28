@@ -1,6 +1,7 @@
 MicrologistUtils = {}
 local MU = MicrologistUtils
 
+MU.version     = C_AddOns.GetAddOnMetadata("MicrologistUtils", "Version")
 MU.modules     = {}
 MU.moduleOrder = {}  -- preserves registration order for the UI
 MU.moduleMeta  = {}  -- displayName, description per module key

@@ -7,6 +7,7 @@
         "StaticPopup_Hide",
         "AuctionHouseFrame",
         "SlashCmdList",
-        "UISpecialFrames"
+        "UISpecialFrames",
+        "LFDRoleCheckPopupDeclineButton"
     ]
 }

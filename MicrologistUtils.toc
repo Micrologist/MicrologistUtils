@@ -1,5 +1,7 @@
 ## Interface: 120000
 ## Title: MicrologistUtils
+## Version: @project-version@
+## X-Wago-ID: YOUR-WAGO-ID
 ## SavedVariables: MicrologistUtilsDB
 
 MicrologistUtils.lua
