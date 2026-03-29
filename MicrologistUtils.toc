@@ -2,7 +2,7 @@
 ## Title: MicrologistUtils
 ## Author: Micrologist
 ## Version: @project-version@
-## Description: Collection of UI Tweaks & Automations
+## Notes: Collection of UI Tweaks & Automations
 ## X-Wago-ID: bGoy2r60
 ## X-WoWI-ID: 27099
 ## X-Curse-Project-ID: 1498369
