@@ -3,7 +3,7 @@ local MU = MicrologistUtils
 local module = {}
 MU:RegisterModule("ElvuiStripedShieldTexture", module, {
     displayName = "ElvUI: Striped Shield Texture",
-    description = "Replace ElvUI's solid color (over-)shield texture with a striped one (requires reload)",
+    description = "Replace ElvUI's solid (over-)shield texture with a striped one (requires reload)",
     available   = function() return ElvUI ~= nil end,
 })
 

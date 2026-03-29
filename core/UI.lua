@@ -4,7 +4,7 @@ local MU = MicrologistUtils
 local PX = {
     FRAME_W     = 193,
     TITLE_H     = 17,
-    ROW_H       = 32,
+    ROW_H       = 35,
     PAD         = 7,
     TOGGLE_W    = 21,
     TOGGLE_H    = 9,
@@ -123,7 +123,7 @@ local function BuildFrame()
     InitSizes()
 
     local n      = #MU.moduleOrder
-    local totalH = TITLE_H + n * ROW_H + PAD * 2
+    local totalH = TITLE_H + n * ROW_H + PAD
 
     local f = CreateFrame("Frame", "MicrologistUtilsFrame", UIParent, "BackdropTemplate")
     f:SetSize(FRAME_W, totalH)
@@ -247,7 +247,7 @@ local function BuildFrame()
 
         local nameFS = row:CreateFontString(nil, "OVERLAY")
         nameFS:SetFont(FONT_FACE, FONT_SMALL_SZ, FONT_FLAGS)
-        nameFS:SetPoint("TOPLEFT", row, "TOPLEFT", PAD, (i == 1 and -4 or -9) * pixel)
+        nameFS:SetPoint("LEFT", row, "LEFT", PAD, FONT_SMALL_SZ * 0.5)
         nameFS:SetWidth(TEXT_W)
         nameFS:SetJustifyH("LEFT")
         nameFS:SetText(meta.displayName or key)
@@ -270,7 +270,7 @@ local function BuildFrame()
 
         if not dimmed then
             local toggle = CreateToggle(row, key)
-            toggle:SetPoint("RIGHT", row, "RIGHT", -PAD, (i == 1 and 0 or -4) * pixel)
+            toggle:SetPoint("RIGHT", row, "RIGHT", -PAD, 0)
             f.toggles[key] = toggle
         end
 
@@ -280,9 +280,28 @@ local function BuildFrame()
     return f
 end
 
+-- ── Subcommands ───────────────────────────────────────────────────────────────
+local subcommands = {}
+
+subcommands["arc"] = function()
+    if not MU.db then return end
+    MU.db.AutoRoleCheck = not MU.db.AutoRoleCheck
+    local state = MU.db.AutoRoleCheck and "Enabled" or "Disabled"
+    print("|cffffd200[MicrologistUtils]|r Automatic Role Checks " .. state)
+    if settingsFrame and settingsFrame.toggles.AutoRoleCheck then
+        settingsFrame.toggles.AutoRoleCheck.Refresh()
+    end
+end
+
 -- ── Slash command  /mu  ───────────────────────────────────────────────────────
 SLASH_MU1 = "/mu"
-SlashCmdList["MU"] = function()
+SlashCmdList["MU"] = function(msg)
+    local cmd = msg and msg:match("^%s*(%S+)") and msg:match("^%s*(%S+)"):lower()
+    if cmd and subcommands[cmd] then
+        subcommands[cmd]()
+        return
+    end
+
     if not settingsFrame then
         settingsFrame = BuildFrame()
     end
