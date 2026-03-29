@@ -12,6 +12,8 @@ function module:Init()
     local ABSORB_TEX = "Interface\\AddOns\\MicrologistUtils\\media\\shield"
 
     local function ApplyToFrame(frame)
+        local t = type(frame)
+        if t ~= "table" or t == "userdata" then return end
         local pred = frame.HealthPrediction
         if not pred then return end
         pred.damageAbsorb:SetStatusBarTexture(ABSORB_TEX)
@@ -24,8 +26,14 @@ function module:Init()
         end
 
         for _, header in pairs(UF.headers or {}) do
-            for _, group in pairs(header.groups or {}) do
-                for _, frame in pairs(group) do
+            if header.groups then
+                for _, group in pairs(header.groups) do
+                    for _, frame in pairs(group) do
+                        ApplyToFrame(frame)
+                    end
+                end
+            else
+                for _, frame in pairs(header) do
                     ApplyToFrame(frame)
                 end
             end
