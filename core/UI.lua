@@ -2,17 +2,18 @@ local MU = MicrologistUtils
 
 -- ── Physical pixel counts (integers, UI-scale-independent) ───────────────────
 local PX = {
-    FRAME_W     = 240,
-    TITLE_H     = 22,
-    ROW_H       = 40,
-    PAD         = 8,
-    TOGGLE_W    = 26,
-    TOGGLE_H    = 12,
-    KNOB_OFF    = 2,
-    FONT_NORMAL = 11,
+    FRAME_W     = 193,
+    TITLE_H     = 17,
+    ROW_H       = 32,
+    PAD         = 7,
+    TOGGLE_W    = 21,
+    TOGGLE_H    = 9,
+    KNOB_OFF    = 1,
+    FONT_NORMAL = 10,
     FONT_SMALL  = 9,
-    FONT_CLOSE  = 12,
-    SLIDER_W    = 24,
+    FONT_TINY   = 7,
+    FONT_CLOSE  = 10,
+    SLIDER_W    = 20,
 }
 PX.KNOB   = PX.TOGGLE_H - 4
 PX.TEXT_W = PX.FRAME_W - 2 - PX.PAD - PX.TOGGLE_W - PX.PAD - 8
@@ -22,7 +23,7 @@ local pixel
 local FRAME_W, TITLE_H, ROW_H, PAD
 local TOGGLE_W, TOGGLE_H, KNOB_SIZE, KNOB_OFF, TEXT_W
 local SLIDER_W
-local FONT_NORMAL_SZ, FONT_SMALL_SZ, FONT_CLOSE_SZ
+local FONT_NORMAL_SZ, FONT_SMALL_SZ, FONT_TINY_SZ, FONT_CLOSE_SZ
 local FONT_FACE, FONT_FLAGS
 
 -- Shared backdrop table; edgeSize and insets are patched in InitSizes
@@ -47,6 +48,7 @@ local function InitSizes()
     SLIDER_W       = PX.SLIDER_W * pixel
     FONT_NORMAL_SZ = PX.FONT_NORMAL * pixel
     FONT_SMALL_SZ  = PX.FONT_SMALL  * pixel
+    FONT_TINY_SZ   = PX.FONT_TINY   * pixel
     FONT_CLOSE_SZ  = PX.FONT_CLOSE  * pixel
     FONT_FACE, _, FONT_FLAGS = GameFontNormal:GetFont()
     BD.edgeSize      = pixel
@@ -121,7 +123,7 @@ local function BuildFrame()
     InitSizes()
 
     local n      = #MU.moduleOrder
-    local totalH = TITLE_H + n * ROW_H + PAD
+    local totalH = TITLE_H + n * ROW_H + PAD * 2
 
     local f = CreateFrame("Frame", "MicrologistUtilsFrame", UIParent, "BackdropTemplate")
     f:SetSize(FRAME_W, totalH)
@@ -175,7 +177,7 @@ local function BuildFrame()
     -- Track (thin visual bar behind the thumb)
     local track = sliderFrame:CreateTexture(nil, "BACKGROUND")
     track:SetColorTexture(unpack(C.sliderTrack))
-    track:SetHeight(4 * pixel)
+    track:SetHeight(3 * pixel)
     track:SetPoint("LEFT",  sliderFrame, "LEFT",  0, 0)
     track:SetPoint("RIGHT", sliderFrame, "RIGHT", 0, 0)
 
@@ -190,7 +192,7 @@ local function BuildFrame()
     -- Thumb
     local thumb = sliderFrame:CreateTexture(nil, "OVERLAY")
     thumb:SetColorTexture(unpack(C.knob))
-    thumb:SetSize(2 * pixel, 8 * pixel)
+    thumb:SetSize(2 * pixel, 7 * pixel)
     sliderFrame:SetThumbTexture(thumb)
 
     sliderFrame:SetValue(savedScale)
@@ -239,12 +241,12 @@ local function BuildFrame()
             local sep = row:CreateTexture(nil, "ARTWORK")
             sep:SetColorTexture(unpack(C.separator))
             sep:SetSize(FRAME_W - 2 * pixel - PAD * 2, pixel)
-            sep:SetPoint("TOPLEFT", row, "TOPLEFT", PAD, 0)
+            sep:SetPoint("TOPLEFT", row, "TOPLEFT", PAD, -4 * pixel)
         end
 
         local nameFS = row:CreateFontString(nil, "OVERLAY")
-        nameFS:SetFont(FONT_FACE, FONT_NORMAL_SZ, FONT_FLAGS)
-        nameFS:SetPoint("TOPLEFT", row, "TOPLEFT", PAD, -5 * pixel)
+        nameFS:SetFont(FONT_FACE, FONT_SMALL_SZ, FONT_FLAGS)
+        nameFS:SetPoint("TOPLEFT", row, "TOPLEFT", PAD, (i == 1 and -4 or -9) * pixel)
         nameFS:SetWidth(TEXT_W)
         nameFS:SetJustifyH("LEFT")
         nameFS:SetText(meta.displayName or key)
@@ -253,7 +255,7 @@ local function BuildFrame()
         local desc = meta.description or ""
         if desc ~= "" then
             local descFS = row:CreateFontString(nil, "OVERLAY")
-            descFS:SetFont(FONT_FACE, FONT_SMALL_SZ, FONT_FLAGS)
+            descFS:SetFont(FONT_FACE, FONT_TINY_SZ, FONT_FLAGS)
             descFS:SetPoint("TOPLEFT", nameFS, "BOTTOMLEFT", 0, -2 * pixel)
             descFS:SetWidth(TEXT_W)
             descFS:SetJustifyH("LEFT")
@@ -262,7 +264,7 @@ local function BuildFrame()
         end
 
         local toggle = CreateToggle(row, key)
-        toggle:SetPoint("RIGHT", row, "RIGHT", -PAD, 0)
+        toggle:SetPoint("RIGHT", row, "RIGHT", -PAD, (i == 1 and 0 or -4) * pixel)
         f.toggles[key] = toggle
 
         yOffset = yOffset - ROW_H

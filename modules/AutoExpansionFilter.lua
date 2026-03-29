@@ -2,8 +2,8 @@ local MU = MicrologistUtils
 local module = {}
 
 MU:RegisterModule("AutoExpansionFilter", module, {
-    displayName = "AH Expansion Filter",
-    description = "Automatically sets the current expansion filter on the Auction House and Work Order UI",
+    displayName = "Set Current Expansion Filter",
+    description = "Always enable the current expansion filter on the Auction House and Work Order UIs",
 })
 
 function module:Init()

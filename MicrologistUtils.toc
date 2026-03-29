@@ -1,4 +1,4 @@
-## Interface: 120000
+## Interface: 120000, 120001
 ## Title: MicrologistUtils
 ## Author: Micrologist
 ## Version: @project-version@
@@ -7,6 +7,6 @@
 ## SavedVariables: MicrologistUtilsDB
 
 MicrologistUtils.lua
+core\UI.lua
 modules\AutoRoleCheck.lua
 modules\AutoExpansionFilter.lua
-core\UI.lua
