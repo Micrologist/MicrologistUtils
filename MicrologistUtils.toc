@@ -12,3 +12,4 @@ MicrologistUtils.lua
 core\UI.lua
 modules\AutoRoleCheck.lua
 modules\AutoExpansionFilter.lua
+modules\ElvuiStripedShieldTexture.lua

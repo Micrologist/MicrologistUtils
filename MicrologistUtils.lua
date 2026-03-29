@@ -8,8 +8,9 @@ MU.moduleOrder = {}  -- preserves registration order for the UI
 MU.moduleMeta  = {}  -- displayName, description per module key
 
 MU.defaults = {
-    AutoRoleCheck       = true,
-    AutoExpansionFilter = true,
+    AutoRoleCheck             = false,
+    AutoExpansionFilter       = true,
+    ElvuiStripedShieldTexture = true,
     UIScale             = 1,
 }
 

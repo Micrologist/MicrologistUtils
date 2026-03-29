@@ -231,7 +231,8 @@ local function BuildFrame()
     local yOffset = -TITLE_H
 
     for i, key in ipairs(MU.moduleOrder) do
-        local meta = MU.moduleMeta[key] or {}
+        local meta     = MU.moduleMeta[key] or {}
+        local dimmed   = meta.noToggle or (meta.available and not meta.available())
 
         local row = CreateFrame("Frame", nil, f)
         row:SetSize(FRAME_W - 2 * pixel, ROW_H)
@@ -250,7 +251,11 @@ local function BuildFrame()
         nameFS:SetWidth(TEXT_W)
         nameFS:SetJustifyH("LEFT")
         nameFS:SetText(meta.displayName or key)
-        nameFS:SetTextColor(unpack(C.textPrim))
+        if dimmed then
+            nameFS:SetTextColor(unpack(C.textSec))
+        else
+            nameFS:SetTextColor(unpack(C.textPrim))
+        end
 
         local desc = meta.description or ""
         if desc ~= "" then
@@ -263,9 +268,11 @@ local function BuildFrame()
             descFS:SetTextColor(unpack(C.textSec))
         end
 
-        local toggle = CreateToggle(row, key)
-        toggle:SetPoint("RIGHT", row, "RIGHT", -PAD, (i == 1 and 0 or -4) * pixel)
-        f.toggles[key] = toggle
+        if not dimmed then
+            local toggle = CreateToggle(row, key)
+            toggle:SetPoint("RIGHT", row, "RIGHT", -PAD, (i == 1 and 0 or -4) * pixel)
+            f.toggles[key] = toggle
+        end
 
         yOffset = yOffset - ROW_H
     end
