@@ -2,7 +2,7 @@ local MU = MicrologistUtils
 
 local module = {}
 MU:RegisterModule("AutoRoleCheck", module, {
-    displayName = "Accept Role Checks |cff808080/mu arc|r",
+    displayName = "Accept Role Checks |cff5599cc/mu arc|r",
     description = "Automatically accept role checks when prompted (Set roles in Dungeon Finder)",
 })
 

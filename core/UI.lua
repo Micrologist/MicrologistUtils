@@ -24,7 +24,8 @@ local FRAME_W, TITLE_H, ROW_H, PAD
 local TOGGLE_W, TOGGLE_H, KNOB_SIZE, KNOB_OFF, TEXT_W
 local SLIDER_W
 local FONT_NORMAL_SZ, FONT_SMALL_SZ, FONT_TINY_SZ, FONT_CLOSE_SZ
-local FONT_FACE, FONT_FLAGS
+local FONT_FACE = "Interface\\AddOns\\MicrologistUtils\\media\\EXPRESSWAYRG.TTF"
+local FONT_FLAGS
 
 -- Shared backdrop table; edgeSize and insets are patched in InitSizes
 local BD = {
@@ -50,7 +51,7 @@ local function InitSizes()
     FONT_SMALL_SZ  = PX.FONT_SMALL  * pixel
     FONT_TINY_SZ   = PX.FONT_TINY   * pixel
     FONT_CLOSE_SZ  = PX.FONT_CLOSE  * pixel
-    FONT_FACE, _, FONT_FLAGS = GameFontNormal:GetFont()
+    _, FONT_FLAGS = GameFontNormal:GetFont()
     BD.edgeSize      = pixel
     BD.insets.left   = pixel
     BD.insets.right  = pixel
@@ -64,6 +65,7 @@ local C = {
     border          = { 0.22, 0.22, 0.22, 1    },
     titleBg         = { 0.13, 0.13, 0.13, 1    },
     titleBorder     = { 0.28, 0.28, 0.28, 1    },
+    accent          = { 85/255, 153/255, 204/255, 1 },
     separator       = { 0.19, 0.19, 0.19, 1    },
     textPrim        = { 0.92, 0.92, 0.92, 1    },
     textSec         = { 0.48, 0.48, 0.48, 1    },
@@ -217,7 +219,7 @@ local function BuildFrame()
     titleText:SetFont(FONT_FACE, FONT_NORMAL_SZ, FONT_FLAGS)
     titleText:SetPoint("LEFT", titleBar, "LEFT", PAD, 0)
     titleText:SetText("MicrologistUtils")
-    titleText:SetTextColor(unpack(C.textPrim))
+    titleText:SetTextColor(unpack(C.accent))
 
     -- Version text — baseline-aligned with title text
     local versionText = titleBar:CreateFontString(nil, "OVERLAY")
@@ -287,7 +289,7 @@ subcommands["arc"] = function()
     if not MU.db then return end
     MU.db.AutoRoleCheck = not MU.db.AutoRoleCheck
     local state = MU.db.AutoRoleCheck and "Enabled" or "Disabled"
-    print("|cffffd200[MicrologistUtils]|r Automatic Role Checks " .. state)
+    print("|cff5599cc[MicrologistUtils]|r Automatic Role Checks " .. state)
     if settingsFrame and settingsFrame.toggles.AutoRoleCheck then
         settingsFrame.toggles.AutoRoleCheck.Refresh()
     end

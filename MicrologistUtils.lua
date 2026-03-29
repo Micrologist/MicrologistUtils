@@ -48,5 +48,7 @@ initFrame:SetScript("OnEvent", function(self, event, addonName)
         end
     end
 
+    print("|cff5599cc[MicrologistUtils v" .. MU.version .. "]|r Type |cff5599cc/mu|r to open the config window")
+
     self:UnregisterEvent("ADDON_LOADED")
 end)
