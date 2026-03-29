@@ -1,30 +1,30 @@
 local MU = MicrologistUtils
 
--- ── Physical pixel counts (integers, UI-scale-independent) ───────────────────
+-- ── Physical pixel counts (integers) ──────────────────────────────────────────
 local PX = {
-    FRAME_W     = 193,
-    TITLE_H     = 17,
-    ROW_H       = 35,
-    PAD         = 7,
-    TOGGLE_W    = 21,
-    TOGGLE_H    = 9,
-    KNOB_OFF    = 1,
-    FONT_NORMAL = 10,
-    FONT_SMALL  = 9,
-    FONT_TINY   = 7,
-    FONT_CLOSE  = 10,
-    SLIDER_W    = 20,
+    FRAME_W     = 486,
+    TITLE_H     = 43,
+    ROW_H       = 88,
+    PAD         = 18,
+    TOGGLE_W    = 53,
+    TOGGLE_H    = 23,
+    KNOB_OFF    = 2,
+    FONT_NORMAL = 25,
+    FONT_SMALL  = 23,
+    FONT_TINY   = 18,
+    FONT_CLOSE  = 25,
+    SLIDER_W    = 50,
 }
 PX.KNOB   = PX.TOGGLE_H - 4
 PX.TEXT_W = PX.FRAME_W - 2 - PX.PAD - PX.TOGGLE_W - PX.PAD - 8
 
--- ── Virtual-unit equivalents (set by InitSizes before any frame is built) ─────
+-- ── Virtual-unit equivalents (recomputed by InitSizes on every build) ──────────
 local pixel
 local FRAME_W, TITLE_H, ROW_H, PAD
 local TOGGLE_W, TOGGLE_H, KNOB_SIZE, KNOB_OFF, TEXT_W
 local SLIDER_W
 local FONT_NORMAL_SZ, FONT_SMALL_SZ, FONT_TINY_SZ, FONT_CLOSE_SZ
-local FONT_FACE = "Interface\\AddOns\\MicrologistUtils\\media\\EXPRESSWAYRG.TTF"
+local FONT_FACE  = "Interface\\AddOns\\MicrologistUtils\\media\\EXPRESSWAYRG.TTF"
 local FONT_FLAGS
 
 -- Shared backdrop table; edgeSize and insets are patched in InitSizes
@@ -36,22 +36,32 @@ local BD = {
 }
 
 local function InitSizes()
-    pixel          = 1 / UIParent:GetEffectiveScale()
-    FRAME_W        = PX.FRAME_W  * pixel
-    TITLE_H        = PX.TITLE_H  * pixel
-    ROW_H          = PX.ROW_H    * pixel
-    PAD            = PX.PAD      * pixel
-    TOGGLE_W       = PX.TOGGLE_W * pixel
-    TOGGLE_H       = PX.TOGGLE_H * pixel
-    KNOB_SIZE      = PX.KNOB     * pixel
-    KNOB_OFF       = PX.KNOB_OFF * pixel
-    TEXT_W         = PX.TEXT_W   * pixel
-    SLIDER_W       = PX.SLIDER_W * pixel
+    -- pixel = UIParent virtual units per physical screen pixel.
+    --
+    -- UIParent:GetHeight() already reflects both screen resolution AND the game's
+    -- UIScale setting (it equals the WoW base height 768 divided by UIScale, scaled
+    -- up/down for the physical resolution).  Dividing by GetPhysicalScreenSize()
+    -- converts that virtual height into a per-pixel factor.  No further division by
+    -- GetEffectiveScale() is needed — doing so would double-count UIScale and make
+    -- the frame grow as UIScale decreases.
+    local physH = select(2, GetPhysicalScreenSize())
+    pixel = UIParent:GetHeight() / physH
+
+    FRAME_W        = PX.FRAME_W     * pixel
+    TITLE_H        = PX.TITLE_H     * pixel
+    ROW_H          = PX.ROW_H       * pixel
+    PAD            = PX.PAD         * pixel
+    TOGGLE_W       = PX.TOGGLE_W    * pixel
+    TOGGLE_H       = PX.TOGGLE_H    * pixel
+    KNOB_SIZE      = PX.KNOB        * pixel
+    KNOB_OFF       = PX.KNOB_OFF    * pixel
+    TEXT_W         = PX.TEXT_W      * pixel
+    SLIDER_W       = PX.SLIDER_W    * pixel
     FONT_NORMAL_SZ = PX.FONT_NORMAL * pixel
     FONT_SMALL_SZ  = PX.FONT_SMALL  * pixel
     FONT_TINY_SZ   = PX.FONT_TINY   * pixel
     FONT_CLOSE_SZ  = PX.FONT_CLOSE  * pixel
-    _, FONT_FLAGS = GameFontNormal:GetFont()
+    _, FONT_FLAGS  = GameFontNormal:GetFont()
     BD.edgeSize      = pixel
     BD.insets.left   = pixel
     BD.insets.right  = pixel
@@ -120,6 +130,11 @@ end
 
 -- ── Main frame ────────────────────────────────────────────────────────────────
 local settingsFrame
+-- Saved drag position (UIParent virtual coords); persisted across rebuilds
+local savedAnchor
+-- UISpecialFrames entry is registered once and stays valid because the frame
+-- always uses the same global name "MicrologistUtilsFrame"
+local specialFrameRegistered = false
 
 local function BuildFrame()
     InitSizes()
@@ -129,23 +144,37 @@ local function BuildFrame()
 
     local f = CreateFrame("Frame", "MicrologistUtilsFrame", UIParent, "BackdropTemplate")
     f:SetSize(FRAME_W, totalH)
-    f:SetPoint("CENTER")
+    if savedAnchor then
+        f:SetPoint(savedAnchor.point, UIParent, savedAnchor.relPoint,
+                   savedAnchor.x, savedAnchor.y)
+    else
+        f:SetPoint("CENTER")
+    end
     f:SetFrameStrata("DIALOG")
     f:SetMovable(true)
     f:EnableMouse(true)
     f:RegisterForDrag("LeftButton")
     f:SetScript("OnDragStart", f.StartMoving)
-    f:SetScript("OnDragStop",  f.StopMovingOrSizing)
+    f:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        local point, _, relPoint, x, y = self:GetPoint(1)
+        savedAnchor = { point = point, relPoint = relPoint, x = x, y = y }
+    end)
     ApplyBD(f, C.bg, C.border)
 
-    local savedScale = (MU.db and MU.db.UIScale) or 1
-    f:SetScale(savedScale)
+    -- User-chosen visual scale multiplier (0.5 – 2.0, default 1)
+    -- Applied on top of the pixel-perfect base; does not affect PX calculations.
+    local userScale = (MU.db and MU.db.UIScale) or 1
+    f:SetScale(userScale)
 
     f:Hide()
 
-    tinsert(UISpecialFrames, "MicrologistUtilsFrame")
+    if not specialFrameRegistered then
+        tinsert(UISpecialFrames, "MicrologistUtilsFrame")
+        specialFrameRegistered = true
+    end
 
-    -- ── Title bar ────────────────────────────────────────────────────────────
+    -- ── Title bar ─────────────────────────────────────────────────────────────
     local titleBar = CreateFrame("Frame", nil, f, "BackdropTemplate")
     titleBar:SetPoint("TOPLEFT",  f, "TOPLEFT",  pixel, -pixel)
     titleBar:SetPoint("TOPRIGHT", f, "TOPRIGHT", -pixel, -pixel)
@@ -168,7 +197,7 @@ local function BuildFrame()
     -- Scale slider
     local sliderFrame = CreateFrame("Slider", "MicrologistUtilsScaleSlider", titleBar)
     sliderFrame:SetOrientation("HORIZONTAL")
-    sliderFrame:SetSize(SLIDER_W, TITLE_H - 2 * pixel)   -- full bar height = easy to grab
+    sliderFrame:SetSize(SLIDER_W, TITLE_H - 2 * pixel)
     sliderFrame:SetPoint("RIGHT", closeBtn, "LEFT", 0, 0)
     sliderFrame:SetMinMaxValues(0.5, 2.0)
     sliderFrame:SetValueStep(0.05)
@@ -176,7 +205,7 @@ local function BuildFrame()
         sliderFrame:SetObeyStepOnDrag(true)
     end
 
-    -- Track (thin visual bar behind the thumb)
+    -- Track
     local track = sliderFrame:CreateTexture(nil, "BACKGROUND")
     track:SetColorTexture(unpack(C.sliderTrack))
     track:SetHeight(3 * pixel)
@@ -197,7 +226,7 @@ local function BuildFrame()
     thumb:SetSize(2 * pixel, 7 * pixel)
     sliderFrame:SetThumbTexture(thumb)
 
-    sliderFrame:SetValue(savedScale)
+    sliderFrame:SetValue(userScale)
 
     local function SliderTooltip(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
@@ -233,8 +262,8 @@ local function BuildFrame()
     local yOffset = -TITLE_H
 
     for i, key in ipairs(MU.moduleOrder) do
-        local meta     = MU.moduleMeta[key] or {}
-        local dimmed   = meta.noToggle or (meta.available and not meta.available())
+        local meta   = MU.moduleMeta[key] or {}
+        local dimmed = meta.noToggle or (meta.available and not meta.available())
 
         local row = CreateFrame("Frame", nil, f)
         row:SetSize(FRAME_W - 2 * pixel, ROW_H)
@@ -281,6 +310,32 @@ local function BuildFrame()
 
     return f
 end
+
+-- ── Adapt to resolution / UIScale changes ─────────────────────────────────────
+-- When either changes, pixel changes — rebuild the frame so all sizes and font
+-- heights are recalculated.  The saved anchor keeps it in the same screen region.
+local function OnDisplayChanged()
+    if not settingsFrame then return end
+
+    -- Capture position before destroying
+    local point, _, relPoint, x, y = settingsFrame:GetPoint(1)
+    savedAnchor = { point = point, relPoint = relPoint, x = x, y = y }
+
+    local wasShown = settingsFrame:IsShown()
+    settingsFrame:Hide()
+    settingsFrame = nil   -- release old frame to GC
+
+    settingsFrame = BuildFrame()
+    for _, toggle in pairs(settingsFrame.toggles) do
+        toggle.Refresh()
+    end
+    if wasShown then settingsFrame:Show() end
+end
+
+local displayEventFrame = CreateFrame("Frame")
+displayEventFrame:RegisterEvent("UI_SCALE_CHANGED")
+displayEventFrame:RegisterEvent("DISPLAY_SIZE_CHANGED")
+displayEventFrame:SetScript("OnEvent", function() OnDisplayChanged() end)
 
 -- ── Subcommands ───────────────────────────────────────────────────────────────
 local subcommands = {}
