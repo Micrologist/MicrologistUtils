@@ -4,6 +4,7 @@ local module = {}
 MU:RegisterModule("ElvuiStripedShieldTexture", module, {
     displayName = "ElvUI: Striped Shield Texture",
     description = "Replace ElvUI's solid (over-)shield texture with a striped one (requires reload)",
+---@diagnostic disable-next-line: undefined-global
     available   = function() return ElvUI ~= nil end,
 })
 
@@ -35,8 +36,10 @@ function module:Init()
     f:RegisterEvent("PLAYER_LOGIN")
     f:SetScript("OnEvent", function()
         if not (MU.db and MU.db.ElvuiStripedShieldTexture) then return end
+---@diagnostic disable-next-line: undefined-global
         if not ElvUI then return end
 
+---@diagnostic disable-next-line: undefined-global
         local E = unpack(ElvUI)
         local UF = E:GetModule("UnitFrames")
 
