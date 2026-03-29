@@ -2,7 +2,7 @@ local MU = MicrologistUtils
 local module = {}
 
 MU:RegisterModule("AutoExpansionFilter", module, {
-    displayName = "Set 'Current Expansion Only' Filter",
+    displayName = "Enable 'Current Expansion Only' Filter",
     description = "Automatically set the current expansion filter when browsing auctions or work orders",
 })
 
