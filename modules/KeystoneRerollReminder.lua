@@ -56,7 +56,7 @@ function module:Init()
 
         local f = CreateFrame("Frame", "MUKeystoneReminderFrame", UIParent, "BackdropTemplate")
         f:SetSize(W, H)
-        f:SetPoint("CENTER", UIParent, "CENTER", 0, math.floor(350 * px + 0.5))
+        f:SetPoint("CENTER", UIParent, "CENTER", 0, math.floor(325 * px + 0.5))
         f:SetFrameStrata("HIGH")
         f:SetMovable(true)
         f:EnableMouse(true)
