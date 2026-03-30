@@ -12,4 +12,5 @@ MicrologistUtils.lua
 core\UI.lua
 modules\AutoRoleCheck.lua
 modules\AutoExpansionFilter.lua
+modules\KeystoneRerollReminder.lua
 modules\ElvuiStripedShieldTexture.lua

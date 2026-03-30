@@ -339,6 +339,7 @@ displayEventFrame:SetScript("OnEvent", function() OnDisplayChanged() end)
 
 -- ── Subcommands ───────────────────────────────────────────────────────────────
 local subcommands = {}
+MU.subcommands = subcommands   -- exposed so modules can self-register subcommands
 
 subcommands["arc"] = function()
     if not MU.db then return end
