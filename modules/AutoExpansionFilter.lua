@@ -33,7 +33,8 @@ function module:Init()
                 local filterBtn = ProfessionsCustomerOrdersFrame.BrowseOrders.SearchBar.FilterDropdown
                 if filterBtn and filterBtn.filters then
                     filterBtn.filters[Enum.AuctionHouseFilter.CurrentExpansionOnly] = true
-                    ProfessionsCustomerOrdersFrame.BrowseOrders.SearchBar:UpdateClearFiltersButton()
+                    local sb = ProfessionsCustomerOrdersFrame.BrowseOrders.SearchBar
+                    if sb.UpdateClearFiltersButton then sb:UpdateClearFiltersButton() end
                 end
             end
         end)
