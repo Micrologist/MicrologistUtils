@@ -200,7 +200,7 @@ local function BuildFrame()
     sliderFrame:SetSize(SLIDER_W, TITLE_H - 2 * pixel)
     sliderFrame:SetPoint("RIGHT", closeBtn, "LEFT", 0, 0)
     sliderFrame:SetMinMaxValues(0.5, 2.0)
-    sliderFrame:SetValueStep(0.05)
+    sliderFrame:SetValueStep(0.1)
     if sliderFrame.SetObeyStepOnDrag then
         sliderFrame:SetObeyStepOnDrag(true)
     end
