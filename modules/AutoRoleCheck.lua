@@ -58,6 +58,14 @@ function module:Init()
         LFDRoleCheckPopup:HookScript("OnShow", ScheduleAccept)
     end
 
+    -- Also accept role check if we are the ones signing up
+    LFGListApplicationDialog:HookScript("OnShow", function(self)
+        if not (MU.db and MU.db.AutoRoleCheck) then return end
+        if self.SignUpButton:IsEnabled() then
+            self.SignUpButton:Click()
+        end
+    end)
+
     local frame = CreateFrame("Frame")
     frame:RegisterEvent("LFG_ROLE_CHECK_HIDE")
     frame:RegisterEvent("PLAYER_REGEN_ENABLED")
