@@ -223,7 +223,7 @@ local function BuildFrame()
     -- Thumb
     local thumb = sliderFrame:CreateTexture(nil, "OVERLAY")
     thumb:SetColorTexture(unpack(C.knob))
-    thumb:SetSize(2 * pixel, 7 * pixel)
+    thumb:SetSize(3 * pixel, 12 * pixel)
     sliderFrame:SetThumbTexture(thumb)
 
     sliderFrame:SetValue(userScale)
