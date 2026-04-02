@@ -243,7 +243,7 @@ function module:Init()
 
     ef:SetScript("OnEvent", function(_, event, ...)
         if event == "CHALLENGE_MODE_COMPLETED" then
-            C_Timer.After(0, CheckCompletion)
+            C_Timer.After(1, CheckCompletion)
 
         elseif event == "ITEM_CHANGED" then
             if active then
