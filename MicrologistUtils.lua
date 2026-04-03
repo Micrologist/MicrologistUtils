@@ -17,11 +17,13 @@ function MU.Debug(...)
 end
 
 MU.defaults = {
-    AutoRoleCheck             = false,
-    AutoExpansionFilter       = true,
-    KeystoneRerollReminder    = true,
-    ElvuiStripedShieldTexture = true,
-    UIScale                   = 1,
+    AutoRoleCheck                        = false,
+    AutoExpansionFilter                  = true,
+    KeystoneRerollReminder               = true,
+    ElvuiStripedShieldTexture            = true,
+    KeystoneDowngradeReminder            = false,
+    KeystoneDowngradeReminderThreshold   = 10,
+    UIScale                              = 1,
 }
 
 ---@param key     string  SavedVariable key, must match a MU.defaults entry

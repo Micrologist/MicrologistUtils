@@ -97,7 +97,7 @@ local function ApplyBD(f, bg, border)
 end
 
 -- ── Sliding toggle ────────────────────────────────────────────────────────────
-local function CreateToggle(parent, key)
+local function CreateToggle(parent, key, onChange)
     local btn = CreateFrame("Button", nil, parent, "BackdropTemplate")
     btn:SetSize(TOGGLE_W, TOGGLE_H)
     ApplyBD(btn, C.toggleOff, C.toggleOffBorder)
@@ -121,6 +121,86 @@ local function CreateToggle(parent, key)
     btn:SetScript("OnClick", function()
         if MU.db then MU.db[key] = not MU.db[key] end
         Refresh()
+        if onChange then onChange(MU.db and MU.db[key]) end
+    end)
+
+    btn.Refresh = Refresh
+    Refresh()
+    return btn
+end
+
+-- ── Inline dropdown ──────────────────────────────────────────────────────────
+local function CreateDropdown(parent, dbKey, options, onChange)
+    local BTN_W  = math.floor(34 * pixel + 0.5)
+    local ITEM_H = math.floor(20 * pixel + 0.5)
+
+    local btn = CreateFrame("Button", nil, parent, "BackdropTemplate")
+    btn:SetSize(BTN_W, TOGGLE_H)
+    ApplyBD(btn, C.toggleOff, C.toggleOffBorder)
+
+    local valFS = btn:CreateFontString(nil, "OVERLAY")
+    valFS:SetFont(FONT_FACE, FONT_TINY_SZ, FONT_FLAGS)
+    valFS:SetPoint("CENTER", btn, "CENTER", 0, 0)
+    valFS:SetTextColor(unpack(C.textPrim))
+
+    local function Refresh()
+        local val = MU.db and MU.db[dbKey]
+        valFS:SetText(val ~= nil and tostring(val) or "—")
+    end
+
+    local popup = nil
+    local popupOpen = false
+
+    local function ClosePopup()
+        if popup then popup:Hide() end
+        popupOpen = false
+    end
+
+    btn:SetScript("OnClick", function()
+        if popupOpen then
+            ClosePopup()
+            return
+        end
+
+        if not popup then
+            local POP_H = ITEM_H * #options
+
+            popup = CreateFrame("Frame", nil, btn, "BackdropTemplate")
+            popup:SetSize(BTN_W, POP_H)
+            popup:SetFrameLevel(btn:GetFrameLevel() + 50)
+            ApplyBD(popup, C.bg, C.border)
+
+            for i, val in ipairs(options) do
+                local item = CreateFrame("Button", nil, popup)
+                item:SetSize(BTN_W, ITEM_H)
+                item:SetPoint("TOPLEFT", popup, "TOPLEFT", 0, -(i - 1) * ITEM_H)
+
+                local fs = item:CreateFontString(nil, "OVERLAY")
+                fs:SetFont(FONT_FACE, FONT_TINY_SZ, FONT_FLAGS)
+                fs:SetPoint("CENTER", item, "CENTER")
+                fs:SetTextColor(unpack(C.textPrim))
+                fs:SetText(tostring(val))
+
+                item:SetScript("OnEnter", function()
+                    fs:SetTextColor(unpack(C.accent))
+                end)
+                item:SetScript("OnLeave", function()
+                    fs:SetTextColor(unpack(C.textPrim))
+                end)
+                item:SetScript("OnClick", function()
+                    if MU.db then MU.db[dbKey] = val end
+                    Refresh()
+                    ClosePopup()
+                    if onChange then onChange(val) end
+                end)
+            end
+            popup:Hide()
+        end
+
+        popup:ClearAllPoints()
+        popup:SetPoint("TOPRIGHT", btn, "BOTTOMRIGHT", 0, -pixel)
+        popup:Show()
+        popupOpen = true
     end)
 
     btn.Refresh = Refresh
@@ -258,7 +338,8 @@ local function BuildFrame()
     versionText:SetTextColor(0.25, 0.25, 0.25, 1)
 
     -- ── Module rows ───────────────────────────────────────────────────────────
-    f.toggles = {}
+    f.toggles   = {}
+    f.dropdowns = {}
     local yOffset = -TITLE_H
 
     for i, key in ipairs(MU.moduleOrder) do
@@ -276,10 +357,16 @@ local function BuildFrame()
             sep:SetPoint("TOPLEFT", row, "TOPLEFT", PAD, -4 * pixel)
         end
 
+        -- Rows with a dropdown shrink the text area to avoid overlap
+        local hasDropdown = not dimmed and meta.dropdownKey and meta.dropdownOptions
+        local rowTextW = hasDropdown
+            and (TEXT_W - math.floor((34 + 9) * pixel + 0.5))
+            or  TEXT_W
+
         local nameFS = row:CreateFontString(nil, "OVERLAY")
         nameFS:SetFont(FONT_FACE, FONT_SMALL_SZ, FONT_FLAGS)
         nameFS:SetPoint("LEFT", row, "LEFT", PAD, FONT_SMALL_SZ * 0.5)
-        nameFS:SetWidth(TEXT_W)
+        nameFS:SetWidth(rowTextW)
         nameFS:SetJustifyH("LEFT")
         nameFS:SetText(meta.displayName or key)
         if dimmed then
@@ -293,16 +380,22 @@ local function BuildFrame()
             local descFS = row:CreateFontString(nil, "OVERLAY")
             descFS:SetFont(FONT_FACE, FONT_TINY_SZ, FONT_FLAGS)
             descFS:SetPoint("TOPLEFT", nameFS, "BOTTOMLEFT", 0, -2 * pixel)
-            descFS:SetWidth(TEXT_W)
+            descFS:SetWidth(rowTextW)
             descFS:SetJustifyH("LEFT")
             descFS:SetText(desc)
             descFS:SetTextColor(unpack(C.textSec))
         end
 
         if not dimmed then
-            local toggle = CreateToggle(row, key)
+            local toggle = CreateToggle(row, key, meta.onToggleChanged)
             toggle:SetPoint("RIGHT", row, "RIGHT", -PAD, 0)
             f.toggles[key] = toggle
+
+            if hasDropdown then
+                local dd = CreateDropdown(row, meta.dropdownKey, meta.dropdownOptions, meta.onDropdownChanged)
+                dd:SetPoint("RIGHT", toggle, "LEFT", -math.floor(9 * pixel + 0.5), 0)
+                f.dropdowns[meta.dropdownKey] = dd
+            end
         end
 
         yOffset = yOffset - ROW_H
@@ -328,6 +421,9 @@ local function OnDisplayChanged()
     settingsFrame = BuildFrame()
     for _, toggle in pairs(settingsFrame.toggles) do
         toggle.Refresh()
+    end
+    for _, dd in pairs(settingsFrame.dropdowns) do
+        dd.Refresh()
     end
     if wasShown then settingsFrame:Show() end
 end
@@ -369,6 +465,9 @@ SlashCmdList["MU"] = function(msg)
     else
         for _, toggle in pairs(settingsFrame.toggles) do
             toggle.Refresh()
+        end
+        for _, dd in pairs(settingsFrame.dropdowns) do
+            dd.Refresh()
         end
         settingsFrame:Show()
     end

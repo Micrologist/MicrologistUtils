@@ -10,7 +10,9 @@
 
 MicrologistUtils.lua
 core\UI.lua
+core\KeystoneReminderFrame.lua
 modules\AutoRoleCheck.lua
 modules\AutoExpansionFilter.lua
 modules\KeystoneRerollReminder.lua
+modules\KeystoneDowngradeReminder.lua
 modules\ElvuiStripedShieldTexture.lua

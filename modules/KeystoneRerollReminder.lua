@@ -7,257 +7,207 @@ MU:RegisterModule("KeystoneRerollReminder", module, {
 })
 
 function module:Init()
-    local FONT = "Interface\\AddOns\\MicrologistUtils\\media\\EXPRESSWAYRG.TTF"
-    local KEYSTONE_ITEM_ID = 180653
+    local reminder    = nil  -- "Reroll Keystone?" popup, built lazily
+    local resultFrame = nil  -- reroll / completion result popup, built lazily
+    local active      = false
 
-    local reminder = nil -- built lazily on first show
-    local active = false
+    -- Continuously-tracked keystone state so we always have a valid "before"
+    -- snapshot ready when ITEM_CHANGED fires
+    local trackedMapID, trackedLevel = nil, nil
+
+    -- Cancellable auto-dismiss timer for the result popup
+    local resultDismissTimer = nil
 
     -- ── Helpers ────────────────────────────────────────────────────────────────
-    
-    local function GetOwnedKeystoneState()
-        return C_MythicPlus.GetOwnedKeystoneChallengeMapID(), C_MythicPlus.GetOwnedKeystoneLevel()
-    end
 
-    -- Scans all regular bag slots for the Mythic Keystone (item 180653).
-    -- Returns bag, slot  or  nil, nil if not found.
-    local function FindKeystoneInBags()
-        for bag = 0, NUM_BAG_SLOTS do
-            for slot = 1, C_Container.GetContainerNumSlots(bag) do
-                local info = C_Container.GetContainerItemInfo(bag, slot)
-                if info and C_Item.IsItemKeystoneByID(info.itemID) then
-                    return bag, slot
-                end
-            end
-        end
-        return nil, nil
+    local function DungeonLabel(mapID, level)
+        local name = (mapID and C_ChallengeMode.GetMapUIInfo(mapID)) or "?"
+        return name .. " +" .. (level or "?")
     end
 
     -- ── Dismiss ────────────────────────────────────────────────────────────────
+
     local function HideReminder(reason)
         MU.Debug("KeystoneRerollReminder: hide —", reason or "unknown reason")
         if reminder then reminder:Hide() end
         active = false
     end
 
-    -- ── Build frame ────────────────────────────────────────────────────────────
-    local function BuildReminder()
-        -- Derive pixel size the same way UI.lua does so the notification is the
-        -- same physical pixel count on every resolution / UIScale combination.
-        local physH = select(2, GetPhysicalScreenSize())
-        local px = UIParent:GetHeight() / physH
-
-        local W        = math.floor(380 * px + 0.5)
-        local H        = math.floor(86  * px + 0.5)
-        local iconSz   = math.floor(56  * px + 0.5)
-        local pad      = math.floor(10  * px + 0.5)
-        local fontSz   = 22 * px
-        local fontSzSub = 22 * px
-
-        local f = CreateFrame("Frame", "MUKeystoneReminderFrame", UIParent, "BackdropTemplate")
-        f:SetSize(W, H)
-        f:SetPoint("CENTER", UIParent, "CENTER", 0, math.floor(325 * px + 0.5))
-        f:SetFrameStrata("HIGH")
-        f:SetMovable(true)
-        f:EnableMouse(true)
-        f:RegisterForDrag("LeftButton")
-        f:SetScript("OnDragStart", f.StartMoving)
-        f:SetScript("OnDragStop",  f.StopMovingOrSizing)
-        f:SetScript("OnMouseDown", function(_, button)
-            if button == "RightButton" then HideReminder("right-clicked") end
-        end)
-
-        -- Stash sizing for use in ShowReminder's auto-width calculation
-        f._px     = px
-        f._pad    = pad
-        f._iconSz = iconSz
-
-        f:SetBackdrop({
-            bgFile = "Interface\\Buttons\\WHITE8X8",
-            edgeFile = "Interface\\Buttons\\WHITE8X8",
-            edgeSize = px,
-            insets = { left = px, right = px, top = px, bottom = px },
-        })
-        f:SetBackdropColor(0.09, 0.09, 0.09, 0.97)
-        f:SetBackdropBorderColor(0.22, 0.22, 0.22, 1)  -- C.border
-
-        -- Keystone icon (Texture — cannot receive mouse events directly)
-        local icon = f:CreateTexture(nil, "ARTWORK")
-        icon:SetSize(iconSz, iconSz)
-        icon:SetPoint("LEFT", f, "LEFT", pad, 0)
-
-        local atlasOK = C_Texture and C_Texture.GetAtlasInfo
-            and C_Texture.GetAtlasInfo("ChallengesMode-Keystone")
-        if atlasOK then
-            icon:SetAtlas("ChallengesMode-Keystone")
-        else
-            local itemTex = select(10, GetItemInfo(KEYSTONE_ITEM_ID))
-            icon:SetTexture(itemTex or "Interface\\Icons\\Inv_Misc_Key_15")
+    local function HideResult(reason)
+        MU.Debug("KeystoneRerollReminder: hide result —", reason or "unknown reason")
+        if resultFrame then resultFrame:Hide() end
+        if resultDismissTimer then
+            resultDismissTimer:Cancel()
+            resultDismissTimer = nil
         end
-
-        -- 1px epic-quality border around the icon
-        local iconBorder = CreateFrame("Frame", nil, f, "BackdropTemplate")
-        iconBorder:SetSize(iconSz + 2 * px, iconSz + 2 * px)
-        iconBorder:SetPoint("LEFT", f, "LEFT", pad - px, 0)
-        iconBorder:SetBackdrop({
-            edgeFile = "Interface\\Buttons\\WHITE8X8",
-            edgeSize = px,
-            insets   = { left = px, right = px, top = px, bottom = px },
-        })
-        iconBorder:SetBackdropBorderColor(163/255, 53/255, 238/255, 1)  -- epic purple
-
-        -- Invisible frame over the icon to intercept mouse for the tooltip.
-        -- Textures have no mouse handling, so we overlay a transparent Frame.
-        local iconHit = CreateFrame("Frame", nil, f)
-        iconHit:SetSize(iconSz, iconSz)
-        iconHit:SetPoint("LEFT", f, "LEFT", pad, 0)
-        iconHit:EnableMouse(true)
-        iconHit:SetScript("OnEnter", function(self)
-            local bag, slot = FindKeystoneInBags()
-            if bag then
-                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                GameTooltip:SetBagItem(bag, slot)
-                GameTooltip:Show()
-            end
-        end)
-        iconHit:SetScript("OnLeave", function()
-            GameTooltip:Hide()
-        end)
-
-        -- "Reroll Keystone?"
-        local label = f:CreateFontString(nil, "OVERLAY")
-        label:SetFont(FONT, fontSz, "OUTLINE")
-        label:SetTextColor(1, 0.82, 0.1, 1)  -- gold
-        label:SetText("Reroll Keystone?")
-        label:SetPoint("BOTTOMLEFT", icon, "RIGHT", pad, math.floor(3 * px + 0.5))
-        label:SetJustifyH("LEFT")
-        f.label = label
-
-        -- Dungeon name + level
-        local sub = f:CreateFontString(nil, "OVERLAY")
-        sub:SetFont(FONT, fontSzSub, "OUTLINE")
-        sub:SetTextColor(0.48, 0.48, 0.48, 1)
-        sub:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -math.floor(4 * px + 0.5))
-        sub:SetJustifyH("LEFT")
-        f.subtitle = sub
-
-        f:Hide()
-        return f
     end
 
-    -- ── Show ───────────────────────────────────────────────────────────────────
+    -- ── Show "Reroll Keystone?" ────────────────────────────────────────────────
+
     local function ShowReminder(ownedMapID, ownedLevel)
         if not (MU.db and MU.db.KeystoneRerollReminder) then
             MU.Debug("KeystoneRerollReminder: ShowReminder suppressed (module disabled)")
             return
         end
         if not reminder then
-            reminder = BuildReminder()
+            reminder = MU.Keystone.BuildReminderFrame(
+                "MUKeystoneReminderFrame",
+                "Reroll Keystone?",
+                function() HideReminder("right-clicked") end
+            )
         end
 
-        -- Resolve dungeon name from the challenge map ID.
-        -- GetMapUIInfo returns: name, id, timeLimit, texture, backgroundTexture
         local dungeonName = (ownedMapID and C_ChallengeMode.GetMapUIInfo(ownedMapID)) or ""
         local levelStr    = ownedLevel and ("+" .. ownedLevel) or ""
         local sep         = (dungeonName ~= "" and levelStr ~= "") and " " or ""
         reminder.subtitle:SetText(dungeonName .. sep .. levelStr)
 
-        -- Auto-size frame width to fit whichever text line is widest.
-        -- text area starts at: pad + iconSz + pad from the frame's left edge.
-        do
-            local px     = reminder._px
-            local pad    = reminder._pad
-            local iconSz = reminder._iconSz
-            local textLeft = pad + iconSz + pad
-            local labelW   = reminder.label:GetStringWidth()
-            local subW     = reminder.subtitle:GetStringWidth()
-            local newW     = textLeft + math.max(labelW, subW) + pad * 2
-            reminder:SetWidth(newW)
-        end
-
+        MU.Keystone.AutoSizeFrame(reminder)
         MU.Debug("KeystoneRerollReminder: showing —", "dungeon=" .. dungeonName)
 
         reminder:Show()
         active = true
     end
 
-    -- ── Completion check ───────────────────────────────────────────────────────
-    local function CheckCompletion()
-        if not (MU.db and MU.db.KeystoneRerollReminder) then
-            return
-        end
+    -- ── Show keystone change result ────────────────────────────────────────────
 
-        local info = C_ChallengeMode.GetChallengeCompletionInfo()
-
-        MU.Debug(
-            "KeystoneRerollReminder: CheckCompletion —",
-            "level=" .. tostring(info and info.level),
-            "onTime=" .. tostring(info and info.onTime),
-            "practice=" .. tostring(info and info.practiceRun)
-        )
-
-        if not info or info.practiceRun then
-            MU.Debug("KeystoneRerollReminder: no info or practice run — skip")
-            return
-        end
-
-        local completedLevel = info.level
-
-        if not info.onTime then
-            MU.Debug("KeystoneRerollReminder: not timed — skip")
-            return
-        end
-
-        local ownedMapID, ownedLevel = GetOwnedKeystoneState()
-
-        MU.Debug(
-            "KeystoneRerollReminder:",
-            "ownedLevel=" .. tostring(ownedLevel),
-            "ownedMapID=" .. tostring(ownedMapID),
-            "canReroll=" .. tostring(
-                ownedLevel ~= nil and ownedLevel > 0 and ownedLevel <= completedLevel
+    local function ShowKeystoneChange(header, newMapID, newLevel)
+        if not (MU.db and MU.db.KeystoneRerollReminder) then return end
+        if not resultFrame then
+            resultFrame = MU.Keystone.BuildReminderFrame(
+                "MUKeystoneChangeResultFrame",
+                header,
+                function() HideResult("right-clicked") end
             )
-        )
-
-        if ownedLevel and ownedLevel > 0
-            and ownedMapID and ownedMapID ~= 0
-            and ownedLevel <= completedLevel
-        then
-            ShowReminder(ownedMapID, ownedLevel)
         end
+
+        resultFrame.label:SetText(header)
+        resultFrame.subtitle:SetText(DungeonLabel(newMapID, newLevel))
+        MU.Keystone.AutoSizeFrame(resultFrame)
+
+        MU.Debug("KeystoneRerollReminder:", header, DungeonLabel(newMapID, newLevel))
+
+        resultFrame:Show()
+
+        if resultDismissTimer then resultDismissTimer:Cancel() end
+        resultDismissTimer = C_Timer.NewTimer(10, function() HideResult("auto-dismissed") end)
     end
 
     -- ── Event wiring ──────────────────────────────────────────────────────────
+
     local ef = CreateFrame("Frame")
     ef:RegisterEvent("CHALLENGE_MODE_COMPLETED")
     ef:RegisterEvent("ITEM_CHANGED")
     ef:RegisterEvent("ZONE_CHANGED_NEW_AREA")
-
-    -- ── Debug subcommand  /mu debugkeystone  ──────────────────────────────────
-    if MU.subcommands then
-        MU.subcommands["debugkeystone"] = function()
-            local ownedMapID, ownedLevel = GetOwnedKeystoneState()
-            ShowReminder(ownedMapID, ownedLevel)
-        end
-    end
+    ef:RegisterEvent("PLAYER_ENTERING_WORLD")
 
     ef:SetScript("OnEvent", function(_, event, ...)
         if event == "CHALLENGE_MODE_COMPLETED" then
-            C_Timer.After(1, CheckCompletion)
+            -- Capture completion info and the pre-change key state now, before
+            -- the game updates the keystone.  After 1 s: if the key changed,
+            -- show the upgrade popup; if not, fall through to the reroll check.
+            local info     = C_ChallengeMode.GetChallengeCompletionInfo()
+            local preMapID = trackedMapID
+            local preLevel = trackedLevel
+
+            MU.Debug(
+                "KeystoneRerollReminder: CHALLENGE_MODE_COMPLETED —",
+                "level="    .. tostring(info and info.level),
+                "onTime="   .. tostring(info and info.onTime),
+                "practice=" .. tostring(info and info.practiceRun)
+            )
+
+            C_Timer.After(1, function()
+                if not (MU.db and MU.db.KeystoneRerollReminder) then return end
+
+                local newMapID, newLevel = MU.Keystone.GetOwnedKeystoneState()
+
+                if newMapID and newLevel
+                    and (newMapID ~= preMapID or newLevel ~= preLevel)
+                then
+                    -- Key updated automatically after the run
+                    MU.Debug("KeystoneRerollReminder: key upgraded —", DungeonLabel(newMapID, newLevel))
+                    ShowKeystoneChange("Keystone Upgraded!", newMapID, newLevel)
+                    trackedMapID, trackedLevel = newMapID, newLevel
+
+                elseif info and not info.practiceRun and info.onTime then
+                    -- Key unchanged; check whether a reroll is worthwhile
+                    MU.Debug(
+                        "KeystoneRerollReminder: key unchanged, checking reroll —",
+                        "ownedLevel="     .. tostring(newLevel),
+                        "completedLevel=" .. tostring(info.level)
+                    )
+                    if newLevel and newLevel > 0
+                        and newMapID and newMapID ~= 0
+                        and newLevel <= info.level
+                    then
+                        ShowReminder(newMapID, newLevel)
+                    end
+                end
+            end)
+
+        elseif event == "PLAYER_ENTERING_WORLD" then
+            C_Timer.After(1, function()
+                trackedMapID, trackedLevel = MU.Keystone.GetOwnedKeystoneState()
+                MU.Debug("KeystoneRerollReminder: initial state —",
+                    "mapID=" .. tostring(trackedMapID),
+                    "level=" .. tostring(trackedLevel))
+            end)
 
         elseif event == "ITEM_CHANGED" then
-            if active then
-                local _, newHyperlink = ...
-                MU.Debug("KeystoneRerollReminder: ITEM_CHANGED —", "new=" .. tostring(newHyperlink))
-                if C_Item.IsItemKeystoneByID(newHyperlink) then
-                    HideReminder("keystone changed")
+            -- Completion key changes do NOT fire this; any keystone ITEM_CHANGED
+            -- is a deliberate reroll. The C_MythicPlus APIs lag behind the bag
+            -- update, so poll every 0.2 s until the state differs from the
+            -- pre-reroll snapshot (up to 5 attempts / 1 s total).
+            local _, newHyperlink = ...
+            MU.Debug("KeystoneRerollReminder: ITEM_CHANGED —", "new=" .. tostring(newHyperlink))
+
+            if C_Item.IsItemKeystoneByID(newHyperlink) then
+                local oldMapID, oldLevel = trackedMapID, trackedLevel
+                if active then HideReminder("keystone changed") end
+
+                local function TryShowReroll(attempt)
+                    local newMapID, newLevel = MU.Keystone.GetOwnedKeystoneState()
+                    if newMapID ~= nil and newLevel ~= nil
+                        and (newMapID ~= oldMapID or newLevel ~= oldLevel)
+                        and (newLevel >= oldLevel)
+                    then
+                        ShowKeystoneChange("Keystone Rerolled!", newMapID, newLevel)
+                        trackedMapID, trackedLevel = newMapID, newLevel
+                    elseif attempt < 5 then
+                        C_Timer.After(0.2, function() TryShowReroll(attempt + 1) end)
+                    else
+                        -- API never updated within the poll window; re-sync tracked
+                        -- state to whatever it reports now to avoid stale snapshots
+                        if newMapID ~= nil and newLevel ~= nil then
+                            trackedMapID, trackedLevel = newMapID, newLevel
+                        end
+                    end
                 end
+                TryShowReroll(0)
             end
 
         elseif event == "ZONE_CHANGED_NEW_AREA" then
-            if active then
-                HideReminder("changed zone")
-            end
+            if active then HideReminder("changed zone") end
         end
     end)
+
+    -- ── Debug subcommands ─────────────────────────────────────────────────────
+
+    if MU.subcommands then
+        MU.subcommands["debugkeystone"] = function()
+            local ownedMapID, ownedLevel = MU.Keystone.GetOwnedKeystoneState()
+            ShowReminder(ownedMapID, ownedLevel)
+        end
+
+        MU.subcommands["debugreroll"] = function()
+            local newMapID, newLevel = MU.Keystone.GetOwnedKeystoneState()
+            ShowKeystoneChange("Keystone Rerolled!", newMapID, newLevel or 8)
+        end
+
+        MU.subcommands["debugcompletion"] = function()
+            local newMapID, newLevel = MU.Keystone.GetOwnedKeystoneState()
+            ShowKeystoneChange("Keystone Upgraded!", newMapID, newLevel or 8)
+        end
+    end
 end
