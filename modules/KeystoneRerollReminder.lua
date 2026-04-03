@@ -90,7 +90,7 @@ function module:Init()
         resultFrame:Show()
 
         if resultDismissTimer then resultDismissTimer:Cancel() end
-        resultDismissTimer = C_Timer.NewTimer(10, function() HideResult("auto-dismissed") end)
+        resultDismissTimer = C_Timer.NewTimer(2, function() HideResult("auto-dismissed") end)
     end
 
     -- ── Event wiring ──────────────────────────────────────────────────────────
