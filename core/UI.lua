@@ -61,7 +61,7 @@ local function InitSizes()
     FONT_SMALL_SZ  = PX.FONT_SMALL  * pixel
     FONT_TINY_SZ   = PX.FONT_TINY   * pixel
     FONT_CLOSE_SZ  = PX.FONT_CLOSE  * pixel
-    _, FONT_FLAGS  = GameFontNormal:GetFont()
+    _, _, FONT_FLAGS = GameFontNormal:GetFont()
     BD.edgeSize      = pixel
     BD.insets.left   = pixel
     BD.insets.right  = pixel
