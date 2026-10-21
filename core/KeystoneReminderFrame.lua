@@ -84,7 +84,14 @@ function MU.Keystone.BuildReminderFrame(frameName, labelText, onDismiss)
     if atlasOK then
         icon:SetAtlas("ChallengesMode-Keystone")
     else
-        local itemTex = select(10, GetItemInfo(KEYSTONE_ITEM_ID))
+        -- The global GetItemInfo was removed; use the C_Item namespace.
+        -- GetItemIconByID works even before the item is cached.
+        local itemTex
+        if C_Item and C_Item.GetItemIconByID then
+            itemTex = C_Item.GetItemIconByID(KEYSTONE_ITEM_ID)
+        elseif C_Item and C_Item.GetItemInfo then
+            itemTex = select(10, C_Item.GetItemInfo(KEYSTONE_ITEM_ID))
+        end
         icon:SetTexture(itemTex or "Interface\\Icons\\Inv_Misc_Key_15")
     end
 
